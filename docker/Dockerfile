@@ -10,12 +10,12 @@ RUN apt-get install -yq
 RUN apt-get -y install git mercurial cmake libpng-dev libjpeg-dev libtiff-dev libglu1-mesa-dev
 
 # Eigen (Known issues with eigen 3.3.7 as of 12/10/2019, so using this tested branch/commit instead) 
-RUN git clone https://gitlab.com/libeigen/eigen --branch 3.2 ed5cd0a4d16e12daa1bef608628c103e67969d63
-RUN mkdir eigen_build
-RUN cd eigen_build &&\
-	cmake . ../eigen &&\
-	make && make install &&\
-	cd ..
+RUN git clone https://gitlab.com/libeigen/eigen --branch 3.2 /eigen
+RUN mkdir /eigen_build && \
+    cd /eigen_build && \
+    cmake /eigen && \
+    make && \
+    make install
 
 # Boost
 RUN apt-get -y install libboost-iostreams-dev libboost-program-options-dev libboost-system-dev libboost-serialization-dev
@@ -27,10 +27,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq libopencv-dev
 RUN apt-get -y install libcgal-dev libcgal-qt5-dev
 
 # VCGLib
-RUN git clone https://github.com/cdcseacave/VCG.git vcglib
+RUN git clone -b v1.0.1 https://github.com/cdcseacave/VCG.git vcglib
 
 # Build from stable release openMVS1.0
-RUN git clone https://github.com/cdcseacave/openMVS.git --branch v1.0
+RUN git clone https://github.com/yunhuiming/openMVS_comments.git openMVS
 
 # Uncomment below (and comment above) to use the latest commit from the master branch
 # RUN git clone https://github.com/cdcseacave/openMVS.git openMVS

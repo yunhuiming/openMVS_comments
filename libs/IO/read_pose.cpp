@@ -264,7 +264,7 @@ bool load_scene(string file,Scene &scene)
 	}
 //    RGB color(255,0,0);
    // save_pointcloud_obj(file + "/track_1.obj", points,mvs_pose.poses.size(),color);
-	std::cout << "deal with feature points" << std::endl;
+    std::cout << "deal with feature points completed" << std::endl;
 	return true;
 }
 //从关联文件中提取这些需要加载的图像的路径和时间戳

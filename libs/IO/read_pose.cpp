@@ -62,113 +62,122 @@ bool save_pointcloud_obj(string name, vector<POINT3F> points,int num_keyframes,R
     return true;
 }
 
-bool read_mvs_pose(string file,MVSPOSE &mvs_pose)
+bool read_mvs_pose(string file, MVSPOSE &mvs_pose)
 {
-	std::ifstream fin;
-	fin.open(file, std::ios::in);
-	if (fin.bad())
-	{
-		cout<<"can't open pose file"<<endl;
-		return false;
-	}
-	//vector<string>imageLists;
-	//vector<Cali> camerapara;
-	int num_images = 0;
-	char bufLine[1024];
+    // 使用std::ifstream打开文件，自动管理文件流的关闭
+    std::ifstream fin(file);
+    
+    if (!fin.is_open())  // 更安全的检查文件是否成功打开
+    {
+        cout << "Can't open pose file" << endl;
+        return false;
+    }
 
-	fin.getline(bufLine, sizeof(bufLine));
+    char bufLine[1024];
+    
+    // 读取第一行：图像的宽高
+    fin.getline(bufLine, sizeof(bufLine));
     istringstream isbufLine(bufLine);
-	string s;
-	int width;
-	int height;
-	isbufLine >> s>>width>>height;
-	mvs_pose.height=height;
-	mvs_pose.width=width;
-//    std::cout << "width " << width<< std::endl;
-	fin.getline(bufLine, sizeof(bufLine));
+    string s;
+    int width, height;
+    isbufLine >> s >> width >> height;
+    mvs_pose.height = height;
+    mvs_pose.width = width;
+    std::cout << "width " << width<< " height " << height<< std::endl;
+
+
+    fin.getline(bufLine, sizeof(bufLine));  // 读取第二行
     istringstream isbuf_size(bufLine);
+    int num_images;
     isbuf_size >> num_images;
-//    std::cout << "num_images " << num_images<< std::endl;
-	//numimage = std::stoi(tmp);
+    std::cout << "num_images " << num_images<< std::endl;
+
+
     vector<POINT3F> points;
-	for (int i = 0; i < num_images; i++)
-	{
-		fin.getline(bufLine, sizeof(bufLine));
+    for (int i = 0; i < num_images; i++)
+    {
+        fin.getline(bufLine, sizeof(bufLine));
         istringstream isbuf_image(bufLine);
-		int id;
-		string imag;
-		double qw, qx, qy, qz, tx, ty, tz,fx,fy,cx,cy;
-        isbuf_image >> id >> fx >>fy >>cx >>cy >> qw >> qx >> qy >> qz >> tx >> ty >> tz >>imag;
+        int id;
+        string imag;
+        double qw, qx, qy, qz, tx, ty, tz, fx, fy, cx, cy;
+        isbuf_image >> id >> fx >> fy >> cx >> cy >> qw >> qx >> qy >> qz >> tx >> ty >> tz >> imag;
+        
         mvs_pose.images_name.push_back(imag);
-		POSE pose;
-		pose.K[0]=fx;
-		pose.K[2]=cx;
-		pose.K[4]=fy;
-		pose.K[5]=cy;
-		pose.trans[0]=tx;
-		pose.trans[1]=ty;
-		pose.trans[2]=tz;
-		// 四元数转旋转矩阵
-		Eigen::Quaterniond q(qw,qx,qy,qz);
-
-		Eigen::Matrix3d R = q.normalized().toRotationMatrix();
-        for(int row=0;row<3;row++)
-		{
-			for(int col=0;col<3;col++)
-			{
-				pose.rot[3*row+col]=R(row,col);
-			}
-		}
-        Eigen::Vector3d t(pose.trans[0],pose.trans[1],pose.trans[2]);
-        Eigen::Vector3d Ow = -R.inverse()* t;
-
-        POINT3F  Q(Ow[0],Ow[1],Ow[2]);
+        
+        POSE pose;
+        pose.K[0] = fx;
+        pose.K[2] = cx;
+        pose.K[4] = fy;
+        pose.K[5] = cy;
+        pose.trans[0] = tx;
+        pose.trans[1] = ty;
+        pose.trans[2] = tz;
+        
+        // 将四元数转换为旋转矩阵
+        Eigen::Quaterniond q(qw, qx, qy, qz);
+        Eigen::Matrix3d R = q.normalized().toRotationMatrix();
+        
+        for (int row = 0; row < 3; row++)
+        {
+            for (int col = 0; col < 3; col++)
+            {
+                pose.rot[3 * row + col] = R(row, col);
+            }
+        }
+        
+        // 计算相机位置
+        Eigen::Vector3d t(pose.trans[0], pose.trans[1], pose.trans[2]);
+        Eigen::Vector3d Ow = -R.inverse() * t;
+        
+        POINT3F Q(Ow[0], Ow[1], Ow[2]);
         points.push_back(Q);
-		mvs_pose.poses.push_back(pose);
-	}
-	RGB color(0,255,0);
-//    save_pointcloud_obj("/home/wangwen/Desktop/三维重建/MVS/data/track_platform.obj", points,mvs_pose.poses.size(),color);
-    save_pointcloud_obj(string(WORKING_FOLDER) + "/track_platform.obj", points,mvs_pose.poses.size(),color);
-	// 读稀疏点
-	fin.getline(bufLine, sizeof(bufLine));
+        
+        mvs_pose.poses.push_back(pose);
+    }
+    std::cout << "read images completed " << std::endl;
+    RGB color(0, 255, 0);
+    save_pointcloud_obj(string(WORKING_FOLDER) + "/track_platform.obj", points, mvs_pose.poses.size(), color);
+
+    // 读取稀疏点数据
+    fin.getline(bufLine, sizeof(bufLine));
     istringstream isbuf_npoint(bufLine);
-	int num_pts;
+    int num_pts;
     isbuf_npoint >> num_pts;
-	mvs_pose.spare_points.resize(num_pts);
-	mvs_pose.views.resize(num_pts);
-//    std::cout << "num_pts" <<num_pts << std::endl;
-	for (int i = 0; i < num_pts; i++)
-	{
-		fin.getline(bufLine, sizeof(bufLine));
+    std::cout << "num_pts" <<num_pts << std::endl;
+    mvs_pose.spare_points.resize(num_pts);
+    mvs_pose.views.resize(num_pts);
+    
+    for (int i = 0; i < num_pts; i++)
+    {
+        fin.getline(bufLine, sizeof(bufLine));
         istringstream isbuf_points(bufLine);
-		double x, y, z;
-		int num_keys;
-
+        double x, y, z;
+        int num_keys;
         isbuf_points >> x >> y >> z >> num_keys;
-		mvs_pose.spare_points[i].x = x;
-		mvs_pose.spare_points[i].y = y;
-		mvs_pose.spare_points[i].z = z;
+        
+        mvs_pose.spare_points[i].x = x;
+        mvs_pose.spare_points[i].y = y;
+        mvs_pose.spare_points[i].z = z;
 
-		/*features->vvImagePoints[i].resize(num_keys);
-		features->vvFrameIndex[i].resize(num_keys);
-		features->vvKeyIndex[i].resize(num_keys);*/
-//		mvs_pose.views[i].reserve(num_keys);
-//		mvs_pose.views[i].reserve(num_keys);
-		mvs_pose.views[i].reserve(num_keys);
-
-		for (int j = 0; j < num_keys; j++)
-		{
-			int img_idx;
-            isbuf_points >> img_idx ;
-			mvs_pose.views[i].push_back(img_idx);	
-		}
-        POINT3F  Q(x,y,z);
+        mvs_pose.views[i].reserve(num_keys);
+        for (int j = 0; j < num_keys; j++)
+        {
+            int img_idx;
+            isbuf_points >> img_idx;
+            mvs_pose.views[i].push_back(img_idx);
+        }
+        
+        POINT3F Q(x, y, z);
         points.push_back(Q);
-		
-	}
-    save_pointcloud_obj(string(WORKING_FOLDER) + "/track.obj", points,mvs_pose.poses.size(),color);
-	return true;
+    }
+    std::cout << "read points completed " << std::endl;
+    save_pointcloud_obj(string(WORKING_FOLDER) + "/track.obj", points, mvs_pose.poses.size(), color);
+    
+    return true;
 }
+
+
 bool load_scene(string file,Scene &scene)
 {
     std::cout << "We are using Keyframe from SLAM to achieve 3D reconstruction" << std::endl;
